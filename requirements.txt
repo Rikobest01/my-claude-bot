@@ -1,2 +1,6 @@
 anthropic
 python-telegram-bot
+requests
+beautifulsoup4
+openpyxl
+pandas
