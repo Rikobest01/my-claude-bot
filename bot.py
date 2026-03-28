@@ -47,23 +47,20 @@ def read_excel(file_path):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
 
-    # YouTube ссылка
     if "youtube.com" in user_text or "youtu.be" in user_text:
-        await update.message.reply_text("🎬 Читаю субтитры видео, подожди...")
+        await update.message.reply_text("Читаю субтитры видео, подожди...")
         transcript = get_youtube_transcript(user_text)
         if transcript:
             prompt = f"Проанализируй это YouTube видео по субтитрам. Напиши: 1) О чём видео в двух предложениях 2) Топ 3 самых интересных момента с примерными таймингами 3) Какой момент лучше всего подойдёт для Reels и почему.\n\n{transcript}"
         else:
-            await update.message.reply_text("❌ Не удалось получить субтитры — возможно у видео их нет или они отключены.")
+            await update.message.reply_text("Не удалось получить субтитры — возможно у видео их нет или они отключены.")
             return
 
-    # Обычная ссылка на сайт
     elif user_text.startswith("http://") or user_text.startswith("https://"):
-        await update.message.reply_text("🔍 Анализирую сайт, подожди...")
+        await update.message.reply_text("Анализирую сайт, подожди...")
         site_content = analyze_website(user_text)
         prompt = f"Проанализируй этот сайт и дай краткое резюме: что это за компания, чем занимается, контакты если есть.\n\n{site_content}"
 
-    # Обычное сообщение
     else:
         prompt = user_text
 
@@ -80,10 +77,10 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file_name = file.file_name
 
     if not (file_name.endswith(".xlsx") or file_name.endswith(".xls") or file_name.endswith(".csv")):
-        await update.message.reply_text("❌ Отправь файл в формате Excel (.xlsx, .xls) или CSV")
+        await update.message.reply_text("Отправь файл в формате Excel (.xlsx, .xls) или CSV")
         return
 
-    await update.message.reply_text("📊 Читаю файл, подожди...")
+    await update.message.reply_text("Читаю файл, подожди...")
 
     tg_file = await context.bot.get_file(file.file_id)
     file_path = f"/tmp/{file_name}"
@@ -109,20 +106,3 @@ app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 app.add_handler(MessageHandler(filters.Document.ALL, handle_file))
 app.run_polling()
-```
-
-4. Нажми **"Commit changes"**
-
----
-
-## Шаг 3️⃣ — Подожди ~2 минуты
-
-Railway сам обновит бота.
-
----
-
-## Шаг 4️⃣ — Проверяем!
-
-Открой Telegram → отправь боту эту же ссылку:
-```
-https://www.youtube.com/watch?v=D2xu_ErLQxQ
