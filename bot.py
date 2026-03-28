@@ -22,11 +22,24 @@ def get_youtube_transcript(url):
         video_id = get_youtube_id(url)
         if not video_id:
             return None
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["ru", "en"])
-        text = " ".join([t["text"] for t in transcript])
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        transcript = None
+        try:
+            transcript = transcript_list.find_transcript(["ru", "en"])
+        except:
+            try:
+                transcript = transcript_list.find_generated_transcript(["ru", "en"])
+            except:
+                for t in transcript_list:
+                    transcript = t
+                    break
+        if not transcript:
+            return None
+        fetched = transcript.fetch()
+        text = " ".join([t["text"] for t in fetched])
         return text[:6000]
     except Exception as e:
-        return None
+        return f"ОШИБКА: {str(e)}"
 
 def analyze_website(url):
     try:
@@ -50,10 +63,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if "youtube.com" in user_text or "youtu.be" in user_text:
         await update.message.reply_text("Читаю субтитры видео, подожди...")
         transcript = get_youtube_transcript(user_text)
-        if transcript:
+        if transcript and not transcript.startswith("ОШИБКА"):
             prompt = f"Проанализируй это YouTube видео по субтитрам. Напиши: 1) О чём видео в двух предложениях 2) Топ 3 самых интересных момента с примерными таймингами 3) Какой момент лучше всего подойдёт для Reels и почему.\n\n{transcript}"
         else:
-            await update.message.reply_text("Не удалось получить субтитры — возможно у видео их нет или они отключены.")
+            await update.message.reply_text(f"Не удалось получить субтитры: {transcript}")
             return
 
     elif user_text.startswith("http://") or user_text.startswith("https://"):
