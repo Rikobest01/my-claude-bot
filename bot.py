@@ -3,7 +3,6 @@ import re
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
-from youtube_transcript_api import YouTubeTranscriptApi
 import anthropic
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
@@ -22,15 +21,13 @@ def get_youtube_transcript(url):
         video_id = get_youtube_id(url)
         if not video_id:
             return None
-        try:
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["ru"])
-        except:
-            try:
-                transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["en"])
-            except:
-                transcript = YouTubeTranscriptApi.get_transcript(video_id)
-        text = " ".join([t["text"] for t in transcript])
-        return text[:6000]
+        api_url = f"https://api.supadata.ai/v1/youtube/transcript?videoId={video_id}&text=true"
+        response = requests.get(api_url, timeout=15)
+        if response.status_code == 200:
+            data = response.json()
+            text = data.get("content", "")
+            return text[:6000] if text else None
+        return f"ОШИБКА: статус {response.status_code}"
     except Exception as e:
         return f"ОШИБКА: {str(e)}"
 
