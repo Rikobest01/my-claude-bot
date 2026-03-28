@@ -100,7 +100,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=3000,
+        max_tokens=6000,
         messages=[{"role": "user", "content": prompt}]
     )
     reply = response.content[0].text
@@ -124,7 +124,7 @@ async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prompt = f"Ты аналитик продаж. Проанализируй эти данные и дай краткий отчёт: основные выводы, топ позиции, на что обратить внимание.\n\n{data_text}"
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=3000,
+        max_tokens=6000,
         messages=[{"role": "user", "content": prompt}]
     )
     reply = response.content[0].text
