@@ -22,21 +22,14 @@ def get_youtube_transcript(url):
         video_id = get_youtube_id(url)
         if not video_id:
             return None
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        transcript = None
         try:
-            transcript = transcript_list.find_transcript(["ru", "en"])
+            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["ru"])
         except:
             try:
-                transcript = transcript_list.find_generated_transcript(["ru", "en"])
+                transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["en"])
             except:
-                for t in transcript_list:
-                    transcript = t
-                    break
-        if not transcript:
-            return None
-        fetched = transcript.fetch()
-        text = " ".join([t["text"] for t in fetched])
+                transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        text = " ".join([t["text"] for t in transcript])
         return text[:6000]
     except Exception as e:
         return f"ОШИБКА: {str(e)}"
