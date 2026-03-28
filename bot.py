@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 import anthropic
+import yt_dlp
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
@@ -12,22 +13,43 @@ ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
-def get_youtube_id(url):
-    match = re.search(r"(?:v=|youtu\.be/)([a-zA-Z0-9_-]{11})", url)
-    return match.group(1) if match else None
-
 def get_youtube_transcript(url):
     try:
-        video_id = get_youtube_id(url)
-        if not video_id:
-            return None
-        api_url = f"https://api.supadata.ai/v1/youtube/transcript?videoId={video_id}&text=true"
-        response = requests.get(api_url, timeout=15)
-        if response.status_code == 200:
-            data = response.json()
-            text = data.get("content", "")
-            return text[:6000] if text else None
-        return f"ОШИБКА: статус {response.status_code}"
+        ydl_opts = {
+            "skip_download": True,
+            "writesubtitles": True,
+            "writeautomaticsub": True,
+            "subtitleslangs": ["ru", "en"],
+            "subtitlesformat": "json3",
+            "quiet": True,
+            "no_warnings": True,
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            subtitles = info.get("subtitles") or info.get("automatic_captions") or {}
+            lang = None
+            if "ru" in subtitles:
+                lang = "ru"
+            elif "en" in subtitles:
+                lang = "en"
+            elif subtitles:
+                lang = list(subtitles.keys())[0]
+            if not lang:
+                return None
+            sub_data = subtitles[lang]
+            for fmt in sub_data:
+                if fmt.get("ext") == "json3":
+                    sub_url = fmt["url"]
+                    response = requests.get(sub_url, timeout=10)
+                    data = response.json()
+                    texts = []
+                    for event in data.get("events", []):
+                        for seg in event.get("segs", []):
+                            t = seg.get("utf8", "").strip()
+                            if t and t != "\n":
+                                texts.append(t)
+                    return " ".join(texts)[:6000]
+        return None
     except Exception as e:
         return f"ОШИБКА: {str(e)}"
 
