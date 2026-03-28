@@ -13,6 +13,10 @@ ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
 
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
+def get_youtube_id(url):
+    match = re.search(r"(?:v=|youtu\.be/)([a-zA-Z0-9_-]{11})", url)
+    return match.group(1) if match else None
+
 def get_youtube_transcript(url):
     try:
         ydl_opts = {
@@ -70,13 +74,18 @@ def read_excel(file_path):
         return f"Ошибка при чтении файла: {e}"
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_text = update.message.text
+    user_text = update.message.text.strip()
+    youtube_match = re.search(r"(https?://(?:www\.)?(?:youtube\.com/watch\S+|youtu\.be/\S+))", user_text)
 
-    if "youtube.com" in user_text or "youtu.be" in user_text:
+    if youtube_match:
+        url = youtube_match.group(1)
+        task = user_text.replace(url, "").strip()
+        if not task:
+            task = "сделай полный анализ видео: о чём оно, главные идеи списком, лучшие моменты для Reels с таймингами, самая сильная цитата"
         await update.message.reply_text("Читаю субтитры видео, подожди...")
-        transcript = get_youtube_transcript(user_text)
+        transcript = get_youtube_transcript(url)
         if transcript and not transcript.startswith("ОШИБКА"):
-            prompt = f"Проанализируй это YouTube видео по субтитрам. Напиши: 1) О чём видео в двух предложениях 2) Топ 3 самых интересных момента с примерными таймингами 3) Какой момент лучше всего подойдёт для Reels и почему.\n\n{transcript}"
+            prompt = f"""Ты эксперт по контент-маркетингу. Вот субтитры YouTube видео.\n\nЗадание пользователя: {task}\n\nСубтитры:\n{transcript}"""
         else:
             await update.message.reply_text(f"Не удалось получить субтитры: {transcript}")
             return
@@ -91,7 +100,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=1024,
+        max_tokens=3000,
         messages=[{"role": "user", "content": prompt}]
     )
     reply = response.content[0].text
@@ -100,28 +109,22 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_file(update: Update, context: ContextTypes.DEFAULT_TYPE):
     file = update.message.document
     file_name = file.file_name
-
     if not (file_name.endswith(".xlsx") or file_name.endswith(".xls") or file_name.endswith(".csv")):
         await update.message.reply_text("Отправь файл в формате Excel (.xlsx, .xls) или CSV")
         return
-
     await update.message.reply_text("Читаю файл, подожди...")
-
     tg_file = await context.bot.get_file(file.file_id)
     file_path = f"/tmp/{file_name}"
     await tg_file.download_to_drive(file_path)
-
     if file_name.endswith(".csv"):
         df = pd.read_csv(file_path)
         data_text = df.to_string(index=False)[:5000]
     else:
         data_text = read_excel(file_path)
-
     prompt = f"Ты аналитик продаж. Проанализируй эти данные и дай краткий отчёт: основные выводы, топ позиции, на что обратить внимание.\n\n{data_text}"
-
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=1024,
+        max_tokens=3000,
         messages=[{"role": "user", "content": prompt}]
     )
     reply = response.content[0].text
