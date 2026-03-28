@@ -4,3 +4,4 @@ requests
 beautifulsoup4
 openpyxl
 pandas
+youtube-transcript-api
