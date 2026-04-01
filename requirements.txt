@@ -5,3 +5,6 @@ beautifulsoup4
 openpyxl
 pandas
 yt-dlp
+openai-whisper
+ffmpeg-python
+torch
